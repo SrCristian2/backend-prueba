@@ -58,11 +58,15 @@ export class TransactionsController {
   @Post(':id/process-payment')
   async processPayment(
     @Param('id') id: string,
-    @Body() body: { cardToken: string },
+    @Body()
+    body: { cardToken: string; address: string; city: string; country: string },
   ) {
     const result = await this.processPaymentUseCase.execute({
       transactionId: id,
       cardToken: body.cardToken,
+      address: body.address,
+      city: body.city,
+      country: body.country,
     });
 
     if (!result.ok) {

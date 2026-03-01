@@ -10,6 +10,9 @@ import { TransactionStatus } from 'src/domain/enums/transaction-status.enum';
 import { ProductNotFoundError } from 'src/domain/errors/product-not-found.error';
 import { InsufficientStockError } from 'src/domain/errors/insufficient-stock.error';
 import { InvalidTransactionStateError } from 'src/domain/errors/invalid-transaction-state.error';
+import type { DeliveryRepository } from 'src/domain/repositories/delivery.repository';
+import { randomUUID } from 'crypto';
+import { Delivery } from 'src/domain/entities/delivery.entity';
 
 @Injectable()
 export class ProcessPaymentUseCase {
@@ -25,6 +28,9 @@ export class ProcessPaymentUseCase {
 
     @Inject('PaymentGateway')
     private readonly paymentGateway: PaymentGateway,
+
+    @Inject('DeliveryRepository')
+    private readonly deliveryRepository: DeliveryRepository,
   ) {}
 
   async execute(
@@ -89,8 +95,24 @@ export class ProcessPaymentUseCase {
       return approveResult;
     }
 
+    const deliveryResult = Delivery.create({
+      id: randomUUID(),
+      transactionId: transaction.id,
+      address: dto.address,
+      city: dto.city,
+      country: dto.country,
+      createdAt: new Date(),
+    });
+
+    if (!deliveryResult.ok) {
+      return deliveryResult;
+    }
+
+    const delivery = deliveryResult.value;
+
     await this.productRepository.save(product);
     await this.transactionRepository.save(transaction);
+    await this.deliveryRepository.save(delivery);
 
     return Result.ok({ status: 'APPROVED' });
   }

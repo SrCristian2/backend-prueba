@@ -37,7 +37,14 @@ export class TransactionsController {
   }
 
   @Post()
-  async create(@Body() body: { productId: string; customerEmail: string }) {
+  async create(
+    @Body()
+    body: {
+      productId: string;
+      customerName: string;
+      customerEmail: string;
+    },
+  ) {
     const result = await this.createTransactionUseCase.execute(body);
 
     if (!result.ok) {

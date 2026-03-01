@@ -3,16 +3,16 @@ import { TransactionOrmEntity } from '../entities/transaction.orm-entity';
 
 export class TransactionMapper {
   static toDomain(model: TransactionOrmEntity): Transaction {
-    return new Transaction(
-      model.id,
-      model.productId,
-      model.amount,
-      model.status,
-      model.customerEmail,
-      model.createdAt,
-      model.updatedAt,
-      model.wompiTransactionId,
-    );
+    return Transaction.fromPersistence({
+      id: model.id,
+      productId: model.productId,
+      amount: model.amount,
+      status: model.status,
+      customerId: model.customerId,
+      createdAt: model.createdAt,
+      updatedAt: model.updatedAt,
+      wompiTransactionId: model.wompiTransactionId,
+    });
   }
 
   static toOrm(entity: Transaction): TransactionOrmEntity {
@@ -22,7 +22,7 @@ export class TransactionMapper {
     model.productId = entity.productId;
     model.amount = entity.amount;
     model.status = entity.getStatus();
-    model.customerEmail = entity.customerEmail;
+    model.customerId = entity.customerId;
     model.createdAt = entity.createdAt;
     model.updatedAt = entity.updatedAt;
     model.wompiTransactionId = entity.wompiTransactionId;

@@ -30,7 +30,10 @@ async function bootstrap() {
 
   const logger = new Logger('bootstrap');
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen({
+    port: parseInt(process.env.PORT ?? '3000'),
+    host: process.env.HOST || '0.0.0.0',
+  });
   logger.log(`servidor corriendo por el puerto ${process.env.PORT}`);
 }
 bootstrap();

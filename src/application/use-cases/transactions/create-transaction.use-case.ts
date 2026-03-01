@@ -7,8 +7,9 @@ import {
 } from 'src/domain/errors';
 import type { ProductRepository } from 'src/domain/repositories/product.repository';
 import type { TransactionRepository } from 'src/domain/repositories/transaction.repository';
+import type { CustomerRepository } from 'src/domain/repositories/customer.repository';
 import { Transaction } from 'src/domain/entities/transaction.entity';
-import { TransactionStatus } from 'src/domain/enums/transaction-status.enum';
+import { Customer } from 'src/domain/entities/customer.entity';
 import { randomUUID } from 'crypto';
 import { CreateTransactionDto } from '../../dto/create-transaction.dto';
 
@@ -20,6 +21,9 @@ export class CreateTransactionUseCase {
 
     @Inject('TransactionRepository')
     private readonly transactionRepository: TransactionRepository,
+
+    @Inject('CustomerRepository')
+    private readonly customerRepository: CustomerRepository,
   ) {}
 
   async execute(
@@ -35,15 +39,38 @@ export class CreateTransactionUseCase {
       return Result.fail(new InsufficientStockError());
     }
 
-    const transaction = new Transaction(
-      randomUUID(),
-      product.id,
-      product.price,
-      TransactionStatus.PENDING,
-      dto.customerEmail,
-      new Date(),
-      new Date(),
-    );
+    let customer = await this.customerRepository.findByEmail(dto.customerEmail);
+
+    if (!customer) {
+      const customerResult = Customer.create({
+        id: randomUUID(),
+        name: dto.customerName,
+        email: dto.customerEmail,
+        createdAt: new Date(),
+      });
+
+      if (!customerResult.ok) {
+        return customerResult;
+      }
+
+      customer = customerResult.value;
+
+      await this.customerRepository.save(customer);
+    }
+
+    const transactionResult = Transaction.create({
+      id: randomUUID(),
+      productId: product.id,
+      customerId: customer.id,
+      amount: product.price,
+      createdAt: new Date(),
+    });
+
+    if (!transactionResult.ok) {
+      return transactionResult;
+    }
+
+    const transaction = transactionResult.value;
 
     await this.transactionRepository.save(transaction);
 

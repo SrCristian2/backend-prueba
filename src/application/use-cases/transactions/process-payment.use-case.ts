@@ -3,6 +3,7 @@ import { Result } from 'src/shared/rop/result';
 import { DomainError } from 'src/domain/errors/domain-error';
 import type { TransactionRepository } from 'src/domain/repositories/transaction.repository';
 import type { ProductRepository } from 'src/domain/repositories/product.repository';
+import type { CustomerRepository } from 'src/domain/repositories/customer.repository';
 import type { PaymentGateway } from 'src/application/ports/payment-gateway.port';
 import { ProcessPaymentDto } from '../../dto/process-payment.dto';
 import { TransactionStatus } from 'src/domain/enums/transaction-status.enum';
@@ -18,6 +19,9 @@ export class ProcessPaymentUseCase {
 
     @Inject('ProductRepository')
     private readonly productRepository: ProductRepository,
+
+    @Inject('CustomerRepository')
+    private readonly customerRepository: CustomerRepository,
 
     @Inject('PaymentGateway')
     private readonly paymentGateway: PaymentGateway,
@@ -50,28 +54,43 @@ export class ProcessPaymentUseCase {
       return Result.fail(new InsufficientStockError());
     }
 
+    const customer = await this.customerRepository.findById(
+      transaction.customerId,
+    );
+
+    if (!customer) {
+      return Result.fail(new InvalidTransactionStateError());
+    }
+
     const paymentResult = await this.paymentGateway.charge({
       amount: transaction.amount,
       cardToken: dto.cardToken,
-      customerEmail: transaction.customerEmail,
+      customerEmail: customer.email,
     });
 
     if (paymentResult.status === 'DECLINED') {
-      transaction.decline();
+      const declineResult = transaction.decline();
+      if (!declineResult.ok) {
+        return declineResult;
+      }
+
       await this.transactionRepository.save(transaction);
 
       return Result.ok({ status: 'DECLINED' });
     }
 
-    transaction.approve(paymentResult.transactionId);
     const stockResult = product.decreaseStock(1);
-
     if (!stockResult.ok) {
       return stockResult;
     }
 
-    await this.transactionRepository.save(transaction);
+    const approveResult = transaction.approve(paymentResult.transactionId);
+    if (!approveResult.ok) {
+      return approveResult;
+    }
+
     await this.productRepository.save(product);
+    await this.transactionRepository.save(transaction);
 
     return Result.ok({ status: 'APPROVED' });
   }

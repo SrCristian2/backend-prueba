@@ -24,7 +24,7 @@ export class TransactionOrmEntity {
   status: TransactionStatus;
 
   @Column()
-  customerEmail: string;
+  customerId: string;
 
   @Column({ nullable: true })
   wompiTransactionId?: string;
